@@ -1,19 +1,23 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.6.0 <0.8.0;
+pragma solidity >=0.6.0 <0.9.0;
 
 import "./Token.sol";
 
 contract dBank {
 
   //assign Token contract to variable
+  Token private token;
 
   //add mappings
+  mapping(address => uint) public etherBalanceOf;
+  mapping(address => uint) public depositStart;
 
   //add events
 
   //pass as constructor argument deployed Token contract
-  constructor() public {
+  constructor(Token _token) public {
     //assign token deployed contract to variable
+    token = _token;
   }
 
   function deposit() payable public {
@@ -21,6 +25,8 @@ contract dBank {
     //check if msg.value is >= than 0.01 ETH
 
     //increase msg.sender ether deposit balance
+    etherBalanceOf[msg.sender] = etherBalanceOf[msg.sender] + msg.value; 
+    depositStart[msg.sender] = depositStart[msg.sender] + block.timestamp; 
     //start msg.sender hodling time
 
     //set msg.sender deposit status to true
