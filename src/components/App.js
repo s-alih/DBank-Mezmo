@@ -15,6 +15,35 @@ class App extends Component {
   }
 
   async loadBlockchainData(dispatch) {
+    await window.ethereum.enable();
+    if(typeof window.ethereum !== "undefined"){
+      const web3 = new Web3(window.ethereum)
+      const netId = await web3.eth.net.getId()
+      const accounts = await web3.eth.getAccounts()
+      
+      if(typeof accounts[0] !== "undefined"){
+        const balance = await web3.eth.getBalance(accounts[0])
+        this.setState({account:accounts[0],web3:web3,balance:balance})
+      }else{
+        window.alert("Login with Metamask")
+      }
+      try{
+        const token = new web3.eth.Contract(Token.abi,Token.networks[netId].address)
+        const dbank = new web3.eth.Contract(dBank.abi,dBank.networks[netId].address)
+        const dBankAddress = dBank.networks[netId].address
+        const tokenBalance = await token.methods.balanceOf(this.state.account).call()
+        
+        console.log(web3.utils.fromWei(tokenBalance) )
+        this.setState({token:token,dbank:dbank,dBankAddress:dBankAddress})
+      }catch(e){
+        console.log("Error",e)
+        window.alert("Contract not deployed to the current network")
+      }
+      
+    }else{
+      window.alert("Please install Metamask")
+    }
+    
 
     //check if MetaMask exists
 
@@ -28,11 +57,28 @@ class App extends Component {
   }
 
   async deposit(amount) {
+    console.log(amount)
     //check if this.state.dbank is ok
+    if(this.state.dbank !== "undefined"){
+      try{
+        await this.state.dbank.methods.deposit().send({value:amount.toString(),from:this.state.account })
+      }catch(e){
+        console.log("Error deposit")
+      }
+    }
+   
       //in try block call dBank deposit();
   }
 
   async withdraw(e) {
+    e.preventDefault()
+    if(this.state.dbank !== "undefined"){
+      try{
+        await this.state.dbank.methods.withdraw().send({from:this.state.account})
+      }catch(e){
+        console.log("Error, withraw");
+      }
+    }
     //prevent button from default click
     //check if this.state.dbank is ok
     //in try block call dBank withdraw();
@@ -66,15 +112,56 @@ class App extends Component {
         </nav>
         <div className="container-fluid mt-5 text-center">
         <br></br>
-          <h1>{/*add welcome msg*/}</h1>
-          <h2>{/*add user address*/}</h2>
+          <h1>Welcome to Mezmo Bank</h1>
+          <h2>{this.state.account}</h2>
           <br></br>
           <div className="row">
             <main role="main" className="col-lg-12 d-flex text-center">
               <div className="content mr-auto ml-auto">
               <Tabs defaultActiveKey="profile" id="uncontrolled-tab-example">
                 {/*add Tab deposit*/}
+                <Tab eventKey="deposit" title="Deposit">
+                  <br /><br />
+                  How much do you want to Deposit
+                  <br /> <br />
+                  (min amount is 0.01 ETH)
+                  <br /><br />
+                  (1 deposit is possible at a time)
+                  <br /><br />
+                  <form onSubmit={(e)=> {
+                    // ..
+                    e.preventDefault()
+                    let amount = this.depositAmount.value
+                    amount = amount * 10 ** 18
+                    this.deposit(amount)
+                  }}>
+                       <div className='form-group mr-sm-2'>
+                      <br></br>
+                        <input
+                          id='depositAmount'
+                          step="0.01"
+                          type='number'
+                          ref={(input) => { this.depositAmount = input }}
+                          className="form-control form-control-md"
+                          placeholder='amount...'
+                          required />
+                      </div>
+                      <button type='submit' className='btn btn-primary'>DEPOSIT</button>
+                    
+                  </form>
+                </Tab>
+               
+                <Tab eventKey="Withdraw" title="Withdraw">
+                <br /><br />
+                Do you want to withdraw + take interest
+                <br /><br />
+                <div>
+                <button type='submit' className='btn btn-primary' onClick={(e)=>this.withdraw(e)}>WITHRAW</button>
+                </div>
                 {/*add Tab withdraw*/}
+                    
+                  
+                </Tab>
               </Tabs>
               </div>
             </main>
