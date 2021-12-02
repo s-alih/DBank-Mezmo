@@ -1,12 +1,10 @@
 import { Tabs, Tab } from 'react-bootstrap'
-import dBank from '../abis/dBank.json'
 import React, { Component } from 'react';
 import Token from '../abis/Token.json'
-import dbank from '../dbank.png';
 import Web3 from 'web3';
 import './App.css';
+import dbank from '../dbank.png'
 
-//h0m3w0rk - add new tab to check accrued interest
 
 class App extends Component {
 
@@ -20,6 +18,7 @@ class App extends Component {
       const web3 = new Web3(window.ethereum)
       const netId = await web3.eth.net.getId()
       const accounts = await web3.eth.getAccounts()
+      console.log(netId)
       
       if(typeof accounts[0] !== "undefined"){
         const balance = await web3.eth.getBalance(accounts[0])
@@ -28,13 +27,10 @@ class App extends Component {
         window.alert("Login with Metamask")
       }
       try{
+        console.log(netId)
         const token = new web3.eth.Contract(Token.abi,Token.networks[netId].address)
-        const dbank = new web3.eth.Contract(dBank.abi,dBank.networks[netId].address)
-        const dBankAddress = dBank.networks[netId].address
         const tokenBalance = await token.methods.balanceOf(this.state.account).call()
-        
-        console.log(web3.utils.fromWei(tokenBalance) )
-        this.setState({token:token,dbank:dbank,dBankAddress:dBankAddress})
+        this.setState({token:token})
       }catch(e){
         console.log("Error",e)
         window.alert("Contract not deployed to the current network")
@@ -83,6 +79,37 @@ class App extends Component {
     //check if this.state.dbank is ok
     //in try block call dBank withdraw();
   }
+  uploadFile =  async (event) =>  {
+    event.preventDefault()
+    
+    console.log(this.uploadInput.files[0])
+    const data = new FormData();
+		data.append('file', this.uploadInput.files[0]);
+	  var response =  await	fetch('http://localhost:8081/distribute', {
+			method: 'POST',
+			body: data
+		})
+    
+    response.json().then(body => {
+      console.log(body)
+      this.setState({accounts:body.accounts,distAmount:body.tokenDistribute})
+      this.setState({message:"Tokens are sending to accounts"})
+      body.accounts.forEach(element => {
+        console.log(element)
+        this.state.token.transfer(element, this.state.distAmount, { from: this.state.account }, function (err, txHash) {
+          if (err) console.error(err);
+      
+          if (txHash) {
+            console.log('Transaction sent!');
+            console.dir(txHash);
+          }
+          this.setState({message:"Tokens are send successfully"})
+        });
+      });
+    });
+   
+    
+}
 
   constructor(props) {
     super(props)
@@ -90,9 +117,10 @@ class App extends Component {
       web3: 'undefined',
       account: '',
       token: null,
-      dbank: null,
+      accounts:[],
+      distAmount:0,
       balance: 0,
-      dBankAddress: null
+      message:'',
     }
   }
 
@@ -107,12 +135,12 @@ class App extends Component {
             rel="noopener noreferrer"
           >
         <img src={dbank} className="App-logo" alt="logo" height="32"/>
-          <b>dBank</b>
+          <b>Anuroop Token Distribution</b>
         </a>
         </nav>
         <div className="container-fluid mt-5 text-center">
         <br></br>
-          <h1>Welcome to Mezmo Bank</h1>
+          <h1>Anuroop Distribution Unit</h1>
           <h2>{this.state.account}</h2>
           <br></br>
           <div className="row">
@@ -122,33 +150,30 @@ class App extends Component {
                 {/*add Tab deposit*/}
                 <Tab eventKey="deposit" title="Deposit">
                   <br /><br />
-                  How much do you want to Deposit
-                  <br /> <br />
-                  (min amount is 0.01 ETH)
-                  <br /><br />
-                  (1 deposit is possible at a time)
-                  <br /><br />
-                  <form onSubmit={(e)=> {
-                    // ..
-                    e.preventDefault()
-                    let amount = this.depositAmount.value
-                    amount = amount * 10 ** 18
-                    this.deposit(amount)
-                  }}>
-                       <div className='form-group mr-sm-2'>
-                      <br></br>
-                        <input
-                          id='depositAmount'
-                          step="0.01"
-                          type='number'
-                          ref={(input) => { this.depositAmount = input }}
-                          className="form-control form-control-md"
-                          placeholder='amount...'
-                          required />
-                      </div>
-                      <button type='submit' className='btn btn-primary'>DEPOSIT</button>
+                  Distribute to accounts
+                  <div className="App">
+                    <h1>UpLoad Accounts File</h1>
+                    <form onSubmit={this.uploadFile}>
+                    <div>
+                    <input
+                    ref={ref => {
+                      this.uploadInput = ref;
+                    }}
+                    type="file"
+                    />
+                    </div>
+                    <br />
                     
-                  </form>
+                    <div>
+						<button className="btn btn-success">Upload</button>
+					</div>
+                    <hr />
+                    
+                    </form>
+                    <div>
+                      {this.state.message}
+                    </div>
+                    </div>
                 </Tab>
                
                 <Tab eventKey="Withdraw" title="Withdraw">
